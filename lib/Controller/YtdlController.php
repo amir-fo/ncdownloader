@@ -120,37 +120,44 @@ class YtdlController extends Controller
      * @NoAdminRequired
      */
     public function Delete(string $gid)
-    {
-        //$gid = $this->request->getParam('gid');
-        if (!$gid) {
-            return new JSONResponse(['error' => "no gid value is received!"]);
-        }
+{
+    if (!$gid) {
+        return new JSONResponse(['error' => "no gid value is received!"]);
+    }
 
-        $row = $this->dbconn->getByGid($gid);
-        $data = $this->dbconn->getExtra($row["data"]);
-        if (!isset($data['pid'])) {
-            if ($this->dbconn->deleteByGid($gid)) {
-                $msg = sprintf("%s is deleted from database!", $gid);
-            }
-            return new JSONResponse(['message' => $msg]);
-        }
-        $pid = $data['pid'];
-        if (!Helper::isRunning($pid)) {
-            if ($this->dbconn->deleteByGid($gid)) {
-                $msg = sprintf("%s is deleted from database!", $gid);
-            } else {
-                $msg = sprintf("process %d is not running!", $pid);
-            }
-        } else {
-            if (Helper::stop($pid)) {
-                $msg = sprintf("process %d has been terminated!", $pid);
-            } else {
-                $msg = sprintf("failed to terminate process %d!", $pid);
-            }
-            $this->dbconn->deleteByGid($gid);
+    $row = $this->dbconn->getByGid($gid);
+
+    // Add this check to ensure $row is valid
+    if (!$row || !is_array($row)) {
+        return new JSONResponse(['error' => "No record found for the given GID!"]);
+    }
+
+    $data = $this->dbconn->getExtra($row["data"]);
+
+    if (!isset($data['pid'])) {
+        if ($this->dbconn->deleteByGid($gid)) {
+            $msg = sprintf("%s is deleted from database!", $gid);
         }
         return new JSONResponse(['message' => $msg]);
     }
+
+    $pid = $data['pid'];
+    if (!Helper::isRunning($pid)) {
+        if ($this->dbconn->deleteByGid($gid)) {
+            $msg = sprintf("%s is deleted from database!", $gid);
+        } else {
+            $msg = sprintf("process %d is not running!", $pid);
+        }
+    } else {
+        if (Helper::stop($pid)) {
+            $msg = sprintf("process %d has been terminated!", $pid);
+        } else {
+            $msg = sprintf("failed to terminate process %d!", $pid);
+        }
+        $this->dbconn->deleteByGid($gid);
+    }
+    return new JSONResponse(['message' => $msg]);
+}
     /**
      * @NoAdminRequired
      */
