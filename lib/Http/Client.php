@@ -2,18 +2,18 @@
 
 namespace OCA\NCDownloader\Http;
 
-//require __DIR__ . "/../../vendor/autoload.php";
 use Symfony\Component\HttpClient\HttpClient;
 
 final class Client
 {
     private $client;
+
     public function __construct(?array $options = [])
     {
         $this->client = HttpClient::create($this->configure($options));
     }
 
-    public static function create(?array $options =[])
+    public static function create(?array $options = [])
     {
         return new self($options);
     }
@@ -25,28 +25,38 @@ final class Client
 
     private function defaultOptions(): array
     {
-        $settings = [
+        return [
             'headers' => [],
-            'extra' => ['curl' => null],
+            'extra' => ['curl' => []],
         ];
-        return $settings;
     }
 
     private function configure(array $options): array
     {
-
-        extract($options);
         $settings = $this->defaultOptions();
-        $settings['extra']['curl'] = $curl ?? [];
-        $settings['headers'] = $headers ?? [];
 
+        // Safely extract options
+        $curl = $options['curl'] ?? [];
+        $headers = $options['headers'] ?? [];
+        $ipv4 = $options['ipv4'] ?? false;
+        $force_ipv4 = $options['force_ipv4'] ?? false;
+        $useragent = $options['useragent'] ?? $this->defaultUserAgent();
+
+        // Merge provided curl options with defaults
+        $settings['extra']['curl'] = array_merge($settings['extra']['curl'], $curl);
+
+        // Configure IPv4 resolution if requested
         if ($ipv4 || $force_ipv4) {
-            $settings['extra']['curl'] = [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4];
+            $settings['extra']['curl'][CURLOPT_IPRESOLVE] = CURL_IPRESOLVE_V4;
         }
-        $settings['headers']['User-Agent'] = $useragent ?? $this->defaultUserAgent();
+
+        // Set headers and user agent
+        $settings['headers'] = array_merge($settings['headers'], $headers);
+        $settings['headers']['User-Agent'] = $useragent;
 
         return $settings;
     }
+
     public function request(string $url, $method, ?array $options = [])
     {
         return $this->client->request($url, $method, $options);
